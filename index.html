@@ -1,0 +1,1421 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photobox — jepret gemes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: satu layar per langkah (sambutan, kamera, hasil), kartu tebal ala stiker dengan bayangan keras */
+:root {
+  --pink: #ff7ac6;
+  --pink-soft: #ffd6ee;
+  --blue: #6db8ff;
+  --blue-soft: #d4ecff;
+  --purple: #9b6bff;
+  --purple-soft: #e6d6ff;
+  --ink: #3d2470;
+  --paper: #fff9fd;
+  --butter: #fff3a8;
+  --font-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 12% 8%, var(--pink-soft) 0, transparent 42%),
+    radial-gradient(circle at 92% 18%, var(--blue-soft) 0, transparent 40%),
+    radial-gradient(circle at 50% 100%, var(--purple-soft) 0, transparent 55%),
+    var(--paper);
+  background-attachment: fixed;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  padding-left: max(14px, env(safe-area-inset-left, 0px));
+  padding-right: max(14px, env(safe-area-inset-right, 0px));
+  padding-top: max(18px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(26px, env(safe-area-inset-bottom, 0px));
+}
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+[tabindex="-1"]:focus { outline: none; }
+
+/* dekorasi melayang */
+.decor { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.decor svg { position: absolute; width: var(--s, 40px); height: var(--s, 40px); fill: var(--c, var(--pink)); stroke: #fff; stroke-width: 1.6; stroke-linejoin: round; opacity: .9; animation: floaty var(--t, 7s) ease-in-out infinite; animation-delay: var(--d, 0s); }
+@keyframes floaty { 0%,100% { transform: translateY(0) rotate(var(--r, 0deg)); } 50% { transform: translateY(-16px) rotate(calc(var(--r, 0deg) + 10deg)); } }
+
+.wrap { position: relative; z-index: 1; width: 100%; max-width: 1040px; margin: 0 auto; }
+.screen { min-height: calc(100vh - 56px); min-height: calc(100dvh - 56px); display: flex; flex-direction: column; justify-content: center; gap: 20px; padding-block: 6px; }
+
+/* tombol */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  font-family: var(--font-display); font-weight: 600; font-size: 1.1rem;
+  padding: 13px 26px; border-radius: 999px; min-height: 48px;
+  border: 3px solid var(--ink); background: #fff; color: var(--ink);
+  box-shadow: 0 6px 0 var(--ink);
+  transition: transform .12s, box-shadow .12s;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--ink); }
+.btn:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--ink); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; transform: none; box-shadow: 0 6px 0 var(--ink); }
+.btn.primary { background: var(--pink); color: #fff; text-shadow: 0 2px 0 rgba(61,36,112,.35); }
+.btn.big { font-size: clamp(1.15rem, 4.6vw, 1.5rem); padding: 16px clamp(22px, 6vw, 40px); }
+.btn.blue { background: var(--blue); color: #fff; text-shadow: 0 2px 0 rgba(61,36,112,.35); }
+.btn.small { font-size: .95rem; padding: 8px 18px; min-height: 42px; box-shadow: 0 4px 0 var(--ink); }
+.btn svg { width: 24px; height: 24px; fill: currentColor; flex: none; }
+
+.pill {
+  font-family: var(--font-display); font-weight: 500; font-size: .95rem;
+  padding: 7px 15px; border-radius: 999px; border: 3px solid var(--ink); background: #fff;
+  transition: transform .1s;
+}
+.pill:hover { transform: translateY(-2px); }
+.pill[aria-pressed="true"] { background: var(--purple); color: #fff; }
+.pill[disabled] { opacity: .55; cursor: not-allowed; }
+.pill.fx[aria-pressed="true"] { background: var(--pink); }
+
+/* ---------- layar sambutan ---------- */
+#welcome { align-items: center; text-align: center; }
+.hello-card {
+  width: 100%; max-width: 640px; background: #fff; border: 4px solid var(--ink); border-radius: 44px;
+  box-shadow: 0 12px 0 var(--ink); padding: 28px 20px 32px; display: flex; flex-direction: column; align-items: center; gap: 18px;
+  position: relative;
+}
+.mascot { width: min(230px, 56vw); height: auto; animation: bob 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes bob { 0%,100% { transform: rotate(-3deg) translateY(0); } 50% { transform: rotate(3deg) translateY(-8px); } }
+.bubble {
+  position: relative; background: var(--butter); border: 3px solid var(--ink); border-radius: 26px;
+  padding: 12px 20px; min-height: 3.4rem; width: min(330px, 100%);
+  font-family: var(--font-display); font-weight: 600; font-size: clamp(1.15rem, 4.6vw, 1.7rem);
+  display: flex; align-items: center; justify-content: center;
+}
+.bubble::before {
+  content: ""; position: absolute; top: -14px; left: 50%; width: 22px; height: 22px; background: var(--butter);
+  border-left: 3px solid var(--ink); border-top: 3px solid var(--ink); transform: translateX(-50%) rotate(45deg);
+}
+.caret { display: inline-block; width: 3px; height: 1.2em; background: var(--ink); margin-left: 4px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.brand { font-size: clamp(2.6rem, 12vw, 4.4rem); font-weight: 700; line-height: 1; color: var(--pink); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); letter-spacing: .01em; }
+.brand span { color: var(--blue); }
+.tagline { margin: 0; font-size: 1.05rem; max-width: 30ch; line-height: 1.45; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip { font-size: .85rem; font-weight: 800; padding: 6px 14px; border-radius: 999px; border: 2.5px solid var(--ink); }
+.chip:nth-child(1) { background: var(--pink-soft); }
+.chip:nth-child(2) { background: var(--blue-soft); }
+.chip:nth-child(3) { background: var(--purple-soft); }
+.chip:nth-child(4) { background: var(--butter); }
+.privacy { margin: 0; font-size: .82rem; opacity: .75; max-width: 38ch; }
+
+/* ---------- layar kamera ---------- */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.topbar h2 { font-size: clamp(1.5rem, 5vw, 2.1rem); }
+.booth-grid { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 22px; align-items: start; }
+.cam-card { background: #fff; border: 4px solid var(--ink); border-radius: 36px; box-shadow: 0 10px 0 var(--ink); padding: 14px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.viewfinder { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 24px; overflow: hidden; background: linear-gradient(135deg, var(--pink-soft), var(--purple-soft), var(--blue-soft)); border: 3px solid var(--ink); }
+.viewfinder video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.fx-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cam-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; padding: 20px; font-size: 1rem; line-height: 1.45; background: rgba(255,249,253,.55); }
+.cam-msg strong { font-family: var(--font-display); font-size: 1.35rem; }
+.cam-msg p { margin: 0; max-width: 34ch; }
+.count { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; font-family: var(--font-display); font-weight: 700; font-size: clamp(5rem, 24vw, 11rem); color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; text-shadow: 0 8px 0 var(--ink); }
+.count.pop { animation: pop .9s ease-out; }
+.count.cheese { font-size: clamp(2.6rem, 14vw, 6.5rem); color: var(--butter); }
+@keyframes pop { 0% { transform: scale(.3); opacity: 0; } 25% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: .95; } }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.flash.go { animation: flash .5s ease-out; }
+@keyframes flash { 0% { opacity: .95; } 100% { opacity: 0; } }
+.corner { position: absolute; width: 30px; height: 30px; border: 5px solid #fff; filter: drop-shadow(0 2px 0 rgba(61,36,112,.55)); pointer-events: none; }
+.corner.tl { top: 10px; left: 10px; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
+.corner.tr { top: 10px; right: 10px; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
+.corner.bl { bottom: 10px; left: 10px; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; }
+.corner.br { bottom: 10px; right: 10px; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+.controls { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row label, .row .lbl { font-family: var(--font-display); font-weight: 500; min-width: 72px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; padding-top: 4px; }
+.status { text-align: center; font-size: .95rem; min-height: 1.3em; margin: 0; }
+.slots { display: grid; gap: 14px; grid-template-columns: 1fr; }
+.slot { position: relative; aspect-ratio: 4 / 3; border-radius: 20px; border: 3px dashed var(--ink); background: rgba(255,255,255,.7); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.slot .num { font-family: var(--font-display); font-weight: 700; font-size: 2.4rem; color: var(--purple); opacity: .55; }
+.slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.slot.filled { border-style: solid; background: #fff; box-shadow: 0 5px 0 var(--ink); }
+.slot.active { border-color: var(--pink); border-width: 4px; animation: pulse .8s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.04); } }
+
+/* ---------- layar hasil ---------- */
+.result-grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: clamp(20px, 3vw, 34px); align-items: center; justify-content: center; }
+.strip-wrap { background: #fff; border: 4px solid var(--ink); border-radius: 28px; box-shadow: 0 10px 0 var(--ink); padding: 12px; transform: rotate(-1.8deg); max-width: 360px; width: 100%; justify-self: center; transition: transform .25s ease; }
+.strip-wrap:hover { transform: rotate(-0.8deg) translateY(-3px); }
+.strip-wrap img { display: block; width: 100%; height: auto; border-radius: 16px; }
+.result-side { display: flex; flex-direction: column; gap: 18px; align-items: flex-start; min-width: 0; }
+.result-side h2 { font-size: clamp(2rem, 8vw, 3rem); color: var(--pink); -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); }
+.result-side p { margin: 0; line-height: 1.5; max-width: 36ch; }
+.tiny-label { font-family: var(--font-display); font-weight: 500; font-size: 1.05rem; margin-bottom: 10px; }
+.frames { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 12px; width: 100%; max-width: 480px; }
+.frame-opt { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px 9px; background: #fff; border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink); transition: transform .1s; font-family: var(--font-display); font-weight: 500; font-size: .85rem; line-height: 1.15; text-align: center; }
+.frame-opt:hover { transform: translateY(-2px); }
+.frame-opt[aria-pressed="true"] { background: var(--butter); outline: 4px solid var(--pink); outline-offset: 2px; }
+.fo-prev { display: block; width: 100%; aspect-ratio: 3 / 4; max-height: 76px; border-radius: 10px; border: 2.5px solid var(--ink); }
+.fp-manis { background: radial-gradient(rgba(255,255,255,.7) 2.5px, transparent 3.5px) 0 0 / 12px 12px, linear-gradient(135deg, #ffd6ee, #ff9ad2); }
+.fp-langit { background: radial-gradient(circle at 28% 30%, rgba(255,255,255,.9) 8px, transparent 9px), radial-gradient(circle at 72% 68%, rgba(255,255,255,.9) 9px, transparent 10px), linear-gradient(160deg, #d9efff, #7fb8ff); }
+.fp-galaksi { background: radial-gradient(#fff3a8 1.5px, transparent 2.5px) 0 0 / 14px 14px, radial-gradient(#ffb3de 1px, transparent 2px) 7px 7px / 14px 14px, linear-gradient(160deg, #3d2470, #6b46c9 60%, #4a7bd8); }
+.fp-pelangi { background: repeating-linear-gradient(135deg, #ffd6ee 0 7px, #fff9fd 7px 14px, #d4ecff 14px 21px, #fff9fd 21px 28px, #e6d6ff 28px 35px, #fff9fd 35px 42px); }
+.fp-gingham { background: repeating-linear-gradient(90deg, rgba(255,122,198,.35) 0 9px, transparent 9px 18px), repeating-linear-gradient(0deg, rgba(255,122,198,.35) 0 9px, transparent 9px 18px), #fff0f8; }
+.fp-film { background: repeating-linear-gradient(0deg, #fff9fd 0 5px, transparent 5px 10px) 3px 0 / 6px 100% no-repeat, repeating-linear-gradient(0deg, #fff9fd 0 5px, transparent 5px 10px) calc(100% - 3px) 0 / 6px 100% no-repeat, #3d2470; }
+
+/* ================= responsif ================= */
+
+/* laptop/desktop pendek: kartu dibatasi tinggi layar, viewfinder menyerap sisa ruang (tetap 4:3) */
+@media (min-width: 761px) and (max-height: 1000px) {
+  .cam-card { height: calc(100dvh - 118px); padding: 10px; gap: 10px; }
+  .controls { flex: none; gap: 9px; }
+  .viewfinder { flex: 1 1 0; min-height: 150px; width: auto; height: auto; align-self: center; max-width: 100%; }
+  .row { gap: 6px; }
+  .btn.big { font-size: 1.1rem; padding: 12px 22px; }
+}
+
+/* tablet & HP: satu kolom, slot foto pindah ke atas kamera */
+@media (max-width: 760px) {
+  .booth-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .slots { grid-template-columns: repeat(3, 1fr); gap: 10px; order: -1; }
+  .slot .num { font-size: 1.5rem; }
+  .row { gap: 7px 6px; }
+  .row .lbl, .row label { min-width: 100%; }
+  .result-grid { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .result-grid .strip-wrap { order: -1; }
+  .result-side { align-items: center; text-align: center; gap: 16px; }
+  .result-side p { margin-inline: auto; }
+  .result-side .row { justify-content: center; width: 100%; }
+  .frames { margin-inline: auto; }
+  .strip-wrap { max-width: min(66vw, 300px); padding: 10px; border-radius: 24px; }
+  .btn { max-width: 100%; }
+}
+
+/* HP: baris filter jadi satu baris yang bisa digeser, hemat tinggi layar */
+@media (max-width: 600px) {
+  .controls .row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .controls .row::-webkit-scrollbar { display: none; }
+  .controls .row .lbl { position: sticky; left: 0; z-index: 1; min-width: auto; padding-right: 8px; background: linear-gradient(90deg, #fff 76%, rgba(255,255,255,0)); }
+  .controls .pill { flex: none; }
+}
+
+/* HP kecil */
+@media (max-width: 480px) {
+  .cam-card { padding: 10px; border-radius: 28px; gap: 10px; }
+  .viewfinder { border-radius: 18px; }
+  .hello-card { border-radius: 32px; padding: 22px 14px 26px; gap: 14px; }
+  .mascot { width: min(180px, 46vw); }
+  .bubble { min-height: 3rem; padding: 10px 16px; }
+  .pill { padding: 6px 12px; font-size: .88rem; }
+  .btn { padding: 12px 20px; }
+  .actions { flex-direction: column; align-items: stretch; }
+  .actions .btn { width: 100%; }
+  .result-side .row { flex-direction: column; align-items: stretch; }
+  .frames { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .frame-opt { font-size: .8rem; padding: 7px 5px 8px; }
+  .strip-wrap { max-width: min(76vw, 300px); }
+}
+
+/* HP sangat kecil (360px ke bawah) */
+@media (max-width: 380px) {
+  .hello-card { padding: 18px 12px 22px; gap: 12px; }
+  .chip { font-size: .76rem; padding: 5px 10px; }
+  .brand { -webkit-text-stroke-width: 2px; }
+  .pill { font-size: .82rem; padding: 5px 10px; }
+  .frames { grid-template-columns: repeat(2, 1fr); }
+  .status, .tagline { font-size: .9rem; }
+}
+
+/* target sentuh lebih lega */
+@media (pointer: coarse) {
+  .pill { min-height: 42px; }
+  .frame-opt { min-height: 84px; }
+}
+
+/* HP/tablet mode landscape (layar pendek): kamera kiri, slot kanan, semua muat tanpa scroll */
+@media (max-height: 560px) and (orientation: landscape) {
+  .screen { justify-content: center; min-height: calc(100dvh - 34px); gap: 10px; }
+  .hello-card { flex-direction: row; flex-wrap: wrap; justify-content: center; max-width: 720px; padding: 14px 18px; gap: 12px; }
+  .hello-card .mascot { width: 96px; }
+  .hello-card .tagline, .hello-card .chips, .hello-card .privacy { display: none; }
+  .booth-grid { grid-template-columns: minmax(0, 1fr) 132px; gap: 12px; }
+  .slots { grid-template-columns: 1fr; gap: 8px; order: 0; }
+  .slot .num { font-size: 1.2rem; }
+  .cam-card { height: calc(100dvh - 84px); padding: 8px; gap: 7px; border-radius: 22px; }
+  .controls { gap: 5px; }
+  .viewfinder { flex: 1 1 0; min-height: 96px; width: auto; height: auto; aspect-ratio: 4 / 3; align-self: center; max-width: 100%; }
+  .row .lbl, .row label { min-width: 0; font-size: .82rem; }
+  .pill { font-size: .78rem; padding: 4px 9px; min-height: 32px; }
+  .btn.big { font-size: .98rem; padding: 9px 16px; min-height: 40px; }
+  .btn.small { font-size: .82rem; padding: 6px 12px; min-height: 34px; }
+  .status { font-size: .78rem; }
+  .topbar h2 { font-size: 1.2rem; }
+  .result-grid { grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 18px; }
+  .result-grid .strip-wrap { max-width: 100%; }
+  .result-side { gap: 12px; }
+  .result-side h2 { font-size: 1.7rem; }
+  .frames { gap: 8px; }
+  .frame-opt { font-size: .74rem; min-height: 0; }
+  .fo-prev { max-height: 52px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ikon yang dipakai ulang -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.6 4.5c2 0 3.5 1 5.4 3 1.9-2 3.4-3 5.4-3 3.6 0 5.7 3.8 4.2 7.3C19.5 16.4 12 21 12 21z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.3l7.1-.7z"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 0c.8 6.2 5.8 11.2 12 12-6.2.8-11.2 5.8-12 12-.8-6.2-5.8-11.2-12-12 6.2-.8 11.2-5.8 12-12z"/></symbol>
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M9 3L7.2 5H4a2 2 0 00-2 2v11a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-3.2L15 3H9zm3 5.5A4.5 4.5 0 1112 17.5 4.5 4.5 0 0112 8.5zm0 2A2.5 2.5 0 1014.5 13 2.5 2.5 0 0012 10.5z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M11 3h2v9.2l3.3-3.3 1.4 1.4L12 16.1 6.3 10.3l1.4-1.4L11 12.2V3zM4 18h16v3H4v-3z"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a6 6 0 11-6 6H4a8 8 0 108-8z"/></symbol>
+    <symbol id="i-img" viewBox="0 0 24 24"><path d="M3 4h18a1 1 0 011 1v14a1 1 0 01-1 1H3a1 1 0 01-1-1V5a1 1 0 011-1zm2 12l4-5 3 3.6L15 10l4 6H5zm11-8.5A1.5 1.5 0 1114.5 9 1.5 1.5 0 0116 7.5z"/></symbol>
+  </defs>
+</svg>
+
+<div class="decor" aria-hidden="true">
+  <svg style="left:5%;top:12%;--s:46px;--c:var(--pink);--t:7s;--r:-10deg"><use href="#i-heart"/></svg>
+  <svg style="left:88%;top:9%;--s:38px;--c:var(--blue);--t:6s;--d:-2s;--r:12deg"><use href="#i-star"/></svg>
+  <svg style="left:10%;top:68%;--s:34px;--c:var(--purple);--t:8s;--d:-1s"><use href="#i-sparkle"/></svg>
+  <svg style="left:91%;top:62%;--s:50px;--c:var(--pink);--t:9s;--d:-4s;--r:8deg"><use href="#i-heart"/></svg>
+  <svg style="left:3%;top:40%;--s:30px;--c:var(--butter);--t:6.5s;--d:-3s"><use href="#i-star"/></svg>
+  <svg style="left:80%;top:84%;--s:36px;--c:var(--blue);--t:7.5s;--d:-5s"><use href="#i-sparkle"/></svg>
+  <svg style="left:46%;top:3%;--s:28px;--c:var(--purple);--t:8.5s;--d:-1.5s"><use href="#i-heart"/></svg>
+  <svg style="left:30%;top:90%;--s:32px;--c:var(--pink);--t:7s;--d:-2.5s"><use href="#i-star"/></svg>
+</div>
+
+<main class="wrap">
+
+  <!-- ===== SAMBUTAN ===== -->
+  <section id="welcome" class="screen" aria-labelledby="brand">
+    <div class="hello-card">
+      <svg class="mascot" viewBox="0 0 200 180" role="img" aria-label="Maskot kamera yang lucu sedang tersenyum">
+        <rect x="68" y="14" width="64" height="40" rx="14" fill="#6db8ff" stroke="#3d2470" stroke-width="6"/>
+        <rect x="16" y="40" width="168" height="124" rx="38" fill="#ff7ac6" stroke="#3d2470" stroke-width="6"/>
+        <circle cx="152" cy="70" r="9" fill="#fff3a8" stroke="#3d2470" stroke-width="4"/>
+        <ellipse cx="100" cy="106" rx="56" ry="46" fill="#fff9fd" stroke="#3d2470" stroke-width="5"/>
+        <ellipse cx="80" cy="98" rx="8" ry="11" fill="#3d2470"/>
+        <ellipse cx="120" cy="98" rx="8" ry="11" fill="#3d2470"/>
+        <circle cx="83" cy="94" r="3" fill="#fff"/>
+        <circle cx="123" cy="94" r="3" fill="#fff"/>
+        <ellipse cx="64" cy="118" rx="10" ry="6" fill="#ffb3de"/>
+        <ellipse cx="136" cy="118" rx="10" ry="6" fill="#ffb3de"/>
+        <path d="M88 118 Q100 134 112 118" fill="none" stroke="#3d2470" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+      <div class="bubble">
+        <span id="typed" aria-hidden="true"></span>
+        <span class="sr-only" id="typedSr" aria-live="polite"></span>
+        <span class="caret" aria-hidden="true"></span>
+      </div>
+      <h1 id="brand" class="brand">Photo<span>box</span></h1>
+      <p class="tagline">Jepret 3 foto, pasang filter gemes, pilih bingkai, terus simpen deh. Gampang banget!</p>
+      <div class="chips"><span class="chip">3 foto sekali jepret</span><span class="chip">6 filter gemes</span><span class="chip">6 bingkai cakep</span><span class="chip">Simpen PNG</span></div>
+      <button class="btn primary big" id="goBooth" type="button"><svg aria-hidden="true"><use href="#i-cam"/></svg>Gas, foto!</button>
+      <p class="privacy">Tenang, fotomu cuma diproses di HP kamu sendiri. Nggak dikirim ke mana-mana, kok.</p>
+    </div>
+  </section>
+
+  <!-- ===== KAMERA ===== -->
+  <section id="booth" class="screen" hidden aria-labelledby="boothTitle">
+    <div class="topbar">
+      <h2 id="boothTitle">Siap-siap pose!</h2>
+      <button class="btn small" id="backWelcome" type="button">Balik</button>
+    </div>
+    <div class="booth-grid">
+      <div class="cam-card">
+        <div class="viewfinder" id="viewfinder">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="fx" class="fx-layer" aria-hidden="true"></canvas>
+          <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          <div class="count" id="count" aria-hidden="true"></div>
+          <div class="flash" id="flash"></div>
+          <div class="cam-msg" id="camMsg" role="status" aria-live="polite">
+            <strong>Nyalain kamera dulu ya...</strong>
+            <p>Pencet "Izinkan" pas browsernya nanya.</p>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="row" role="group" aria-label="Filter gemes">
+            <span class="lbl">Filter</span>
+            <button class="pill fx" type="button" data-fx="none" aria-pressed="true">Polos</button>
+            <button class="pill fx" type="button" data-fx="cat" aria-pressed="false">Kucing</button>
+            <button class="pill fx" type="button" data-fx="bunny" aria-pressed="false">Kelinci</button>
+            <button class="pill fx" type="button" data-fx="crown" aria-pressed="false">Mahkota</button>
+            <button class="pill fx" type="button" data-fx="glasses" aria-pressed="false">Kacamata love</button>
+            <button class="pill fx" type="button" data-fx="blush" aria-pressed="false">Merah malu</button>
+            <button class="pill fx" type="button" data-fx="bow" aria-pressed="false">Pita</button>
+          </div>
+          <div class="row" role="group" aria-label="Warna foto">
+            <span class="lbl">Warna</span>
+            <button class="pill" type="button" data-filter="normal" aria-pressed="true">Biasa</button>
+            <button class="pill" type="button" data-filter="pinky" aria-pressed="false">Pinky</button>
+            <button class="pill" type="button" data-filter="dreamy" aria-pressed="false">Dreamy</button>
+            <button class="pill" type="button" data-filter="bw" aria-pressed="false">Jadul</button>
+          </div>
+          <div class="row" role="group" aria-label="Jeda sebelum jepret">
+            <span class="lbl">Jeda</span>
+            <button class="pill" type="button" data-delay="3" aria-pressed="true">3 detik</button>
+            <button class="pill" type="button" data-delay="5" aria-pressed="false">5 detik</button>
+            <button class="pill" type="button" data-delay="8" aria-pressed="false">8 detik</button>
+          </div>
+          <div class="actions">
+            <button class="btn primary big" id="startBtn" type="button" disabled><svg aria-hidden="true"><use href="#i-cam"/></svg>Gas, jepret 3x!</button>
+            <button class="btn small" id="uploadBtn" type="button"><svg aria-hidden="true"><use href="#i-img"/></svg>Ambil dari galeri</button>
+            <input type="file" id="fileInput" accept="image/*" multiple hidden>
+          </div>
+          <p class="status" id="status" aria-live="polite">Kita jepret 3x ya, siap-siap!</p>
+        </div>
+      </div>
+      <div class="slots" id="slots" role="group" aria-label="Tiga slot foto">
+        <div class="slot" data-i="0"><span class="num">1</span></div>
+        <div class="slot" data-i="1"><span class="num">2</span></div>
+        <div class="slot" data-i="2"><span class="num">3</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HASIL ===== -->
+  <section id="result" class="screen" hidden aria-labelledby="resultTitle">
+    <div class="result-grid">
+      <div class="strip-wrap"><img id="stripImg" alt="Hasil photostrip isi 3 foto"></div>
+      <div class="result-side">
+        <h2 id="resultTitle">Yeay, jadiii!</h2>
+        <p>Gemes awokawok? Pilih bingkainya, terus simpen deh!</p>
+        <div style="width:100%">
+          <div class="tiny-label">Pilih bingkai</div>
+          <div class="frames" role="group" aria-label="Pilih bingkai">
+            <button class="frame-opt" type="button" data-frame="manis" aria-pressed="true"><span class="fo-prev fp-manis"></span>Pink Gemes</button>
+            <button class="frame-opt" type="button" data-frame="langit" aria-pressed="false"><span class="fo-prev fp-langit"></span>Langit Cerah</button>
+            <button class="frame-opt" type="button" data-frame="galaksi" aria-pressed="false"><span class="fo-prev fp-galaksi"></span>Galaksi Ungu</button>
+            <button class="frame-opt" type="button" data-frame="pelangi" aria-pressed="false"><span class="fo-prev fp-pelangi"></span>Pelangi Pastel</button>
+            <button class="frame-opt" type="button" data-frame="gingham" aria-pressed="false"><span class="fo-prev fp-gingham"></span>Piknik Manis</button>
+            <button class="frame-opt" type="button" data-frame="film" aria-pressed="false"><span class="fo-prev fp-film"></span>Film Jadul</button>
+          </div>
+        </div>
+        <div class="row" style="gap:14px">
+          <button class="btn blue big" id="downloadBtn" type="button" disabled><svg aria-hidden="true"><use href="#i-down"/></svg>Simpen foto</button>
+          <button class="btn" id="againBtn" type="button"><svg aria-hidden="true"><use href="#i-redo"/></svg>Jepret lagi</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var screens = { welcome: $("#welcome"), booth: $("#booth"), result: $("#result") };
+  function show(name, moveFocus) {
+    Object.keys(screens).forEach(function (k) { screens[k].hidden = (k !== name); });
+    window.scrollTo(0, 0);
+    if (moveFocus) {
+      var h = screens[name].querySelector("h1, h2");
+      if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+    }
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* ---------- sapaan mengetik ---------- */
+  var phrases = ["Haii kamu!", "Siap pose gemes?", "Ayo foto bareng akuu!"];
+  var typedEl = $("#typed"), typedSr = $("#typedSr");
+  var typingToken = 0, phraseIndex = 0;
+
+  async function typeLoop() {
+    var myRun = ++typingToken;
+    if (reduceMotion) { typedEl.textContent = phrases[0]; typedSr.textContent = phrases[0]; return; }
+    while (myRun === typingToken) {
+      var text = phrases[phraseIndex % phrases.length];
+      typedSr.textContent = text;
+      for (var i = 1; i <= text.length && myRun === typingToken; i++) { typedEl.textContent = text.slice(0, i); await sleep(70); }
+      if (myRun !== typingToken) break;
+      await sleep(1500);
+      if (myRun !== typingToken) break;
+      for (var j = text.length; j >= 0 && myRun === typingToken; j--) { typedEl.textContent = text.slice(0, j); await sleep(34); }
+      if (myRun !== typingToken) break;
+      await sleep(250);
+      phraseIndex++;
+    }
+  }
+  function stopTyping() { typingToken++; }
+  typeLoop();
+
+  /* ---------- state ---------- */
+  var video = $("#video");
+  var stream = null, camReady = false, busy = false;
+  var sessionId = 0;
+  var delaySec = 3, filterName = "normal", frameName = "manis", faceFx = "none";
+  var photos = [null, null, null];
+  var INK = "#3d2470";
+
+  var FILTERS = {
+    normal: "none",
+    pinky: "saturate(1.25) brightness(1.08) contrast(0.95) sepia(0.12) hue-rotate(-12deg)",
+    dreamy: "brightness(1.1) contrast(0.92) saturate(1.1) hue-rotate(14deg)",
+    bw: "grayscale(1) contrast(1.1)"
+  };
+  var TINT = { pinky: "rgba(255,140,205,0.28)", dreamy: "rgba(130,190,255,0.28)" };
+  var canFilter = (typeof CanvasRenderingContext2D !== "undefined") && ("filter" in CanvasRenderingContext2D.prototype);
+
+  var statusEl = $("#status"), startBtn = $("#startBtn"), camMsg = $("#camMsg");
+  function setStatus(t) { statusEl.textContent = t; }
+
+  /* ---------- path bentuk ---------- */
+  var HEART = "M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 4.5 6.6 4.5c2 0 3.5 1 5.4 3 1.9-2 3.4-3 5.4-3 3.6 0 5.7 3.8 4.2 7.3C19.5 16.4 12 21 12 21z";
+  var STAR = "M12 2l2.9 6.6 7.1.7-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.3l7.1-.7z";
+  var SPARK = "M12 0c.8 6.2 5.8 11.2 12 12-6.2.8-11.2 5.8-12 12-.8-6.2-5.8-11.2-12-12 6.2-.8 11.2-5.8 12-12z";
+  var CLOUD = "M7 19c-2.8 0-5-2.2-5-5s2.2-5 4.9-5c.9-2.9 3.5-5 6.6-5 3.7 0 6.7 2.9 6.9 6.5 1.4.8 2.1 2.2 2.1 3.8 0 2.4-2 4.7-4.5 4.7H7z";
+  var SHAPES = { heart: HEART, star: STAR, spark: SPARK, cloud: CLOUD };
+
+  function sticker(ctx, d, x, y, size, rot, fill) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot * Math.PI / 180);
+    ctx.scale(size / 24, size / 24);
+    ctx.translate(-12, -12);
+    var p = new Path2D(d);
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#fff";
+    ctx.stroke(p);
+    ctx.fillStyle = fill;
+    ctx.fill(p);
+    ctx.restore();
+  }
+
+  /* ---------- kamera ---------- */
+  function showCamMsg(title, body, withRetry) {
+    camMsg.hidden = false;
+    camMsg.innerHTML = "";
+    var s = document.createElement("strong"); s.textContent = title;
+    var p = document.createElement("p"); p.textContent = body;
+    camMsg.appendChild(s); camMsg.appendChild(p);
+    if (withRetry) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "btn small"; b.textContent = "Cobain lagi";
+      b.addEventListener("click", startCamera);
+      camMsg.appendChild(b);
+    }
+  }
+
+  async function startCamera() {
+    camReady = false; startBtn.disabled = true;
+    showCamMsg("Nyalain kamera dulu ya...", "Pencet \"Izinkan\" pas browsernya nanya.", false);
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      var insecure = location.protocol === "file:" ||
+        (location.protocol === "http:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1");
+      showCamMsg("Kameranya belum bisa dipakai", insecure
+        ? "Browser cuma kasih akses kamera di https atau localhost. Buka lewat https, atau ambil foto dari galeri aja."
+        : "Browser ini nggak bisa akses kamera. Tenang, kamu masih bisa ambil foto dari galeri.", false);
+      setStatus("Pilih 3 foto dari galeri aja ya.");
+      return;
+    }
+    try {
+      stopCamera();
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } },
+        audio: false
+      });
+      video.srcObject = stream;
+      await video.play();
+      camReady = true;
+      camMsg.hidden = true;
+      startBtn.disabled = false;
+      setStatus("Kita jepret 3x ya, siap-siap!");
+      startFxLoop();
+    } catch (e) {
+      stopCamera();
+      var name = e && e.name;
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        showCamMsg("Kameranya belum diizinin", "Pencet ikon kamera di address bar, pilih Izinkan, terus coba lagi. Atau ambil foto dari galeri aja.", true);
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        showCamMsg("Kameranya nggak ketemu", "Pastiin kameranya kepasang dan nggak dipakai aplikasi lain. Atau ambil foto dari galeri aja.", true);
+      } else {
+        showCamMsg("Kameranya gagal nyala", "Cobain lagi, atau ambil foto dari galeri aja.", true);
+      }
+      setStatus("Pilih 3 foto dari galeri aja ya.");
+    }
+  }
+  function stopCamera() {
+    sessionId++;
+    stopFxLoop();
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    video.srcObject = null; camReady = false;
+    clearCount();
+    setActive(-1);
+    setBusy(false);
+  }
+
+  /* ---------- filter wajah (MediaPipe Face Landmarker) ---------- */
+  var MP_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+  var MP_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+  var landmarker = null, lmPromise = null, detecting = false;
+  var lastFace = null, lastFaceAt = 0, lastVT = -1, lastDetect = 0, rafId = 0, fxDirty = false;
+  var fxCanvas = $("#fx"), fxCtx = fxCanvas.getContext("2d");
+
+  function loadLandmarker() {
+    if (landmarker) return Promise.resolve(true);
+    if (lmPromise) return lmPromise;
+    lmPromise = (async function () {
+      try {
+        var mod = await import(MP_BASE + "/vision_bundle.mjs");
+        var fileset = await mod.FilesetResolver.forVisionTasks(MP_BASE + "/wasm");
+        var delegates = ["GPU", "CPU"];
+        for (var i = 0; i < delegates.length; i++) {
+          try {
+            landmarker = await mod.FaceLandmarker.createFromOptions(fileset, {
+              baseOptions: { modelAssetPath: MP_MODEL, delegate: delegates[i] },
+              runningMode: "VIDEO",
+              numFaces: 1
+            });
+            return true;
+          } catch (err) { landmarker = null; }
+        }
+        return false;
+      } catch (e) { return false; }
+    })().then(function (ok) { if (!ok) lmPromise = null; return ok; });
+    return lmPromise;
+  }
+
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+  /* titik landmark -> koordinat target (cover crop), lalu ke sistem lokal wajah (berputar mengikuti kemiringan kepala) */
+  function faceGeom(lm, vw, vh, W, H) {
+    var s = Math.max(W / vw, H / vh), ox = (W - vw * s) / 2, oy = (H - vh * s) / 2;
+    function P(i) { return { x: lm[i].x * vw * s + ox, y: lm[i].y * vh * s + oy }; }
+    var a = P(33), a2 = P(133), b = P(263), b2 = P(362);
+    var eL = { x: (a.x + a2.x) / 2, y: (a.y + a2.y) / 2 };
+    var eR = { x: (b.x + b2.x) / 2, y: (b.y + b2.y) / 2 };
+    var mid = { x: (eL.x + eR.x) / 2, y: (eL.y + eR.y) / 2 };
+    var roll = Math.atan2(eR.y - eL.y, eR.x - eL.x);
+    var cs = Math.cos(-roll), sn = Math.sin(-roll);
+    function L(p) { var dx = p.x - mid.x, dy = p.y - mid.y; return { x: dx * cs - dy * sn, y: dx * sn + dy * cs }; }
+    return {
+      mid: mid, roll: roll, w: dist(P(234), P(454)),
+      eL: L(eL), eR: L(eR), top: L(P(10)), chin: L(P(152)),
+      nose: L(P(1)), mouth: L(P(13)), cL: L(P(50)), cR: L(P(280))
+    };
+  }
+
+  var FX = {
+    cat: function (ctx, g, w) {
+      var by = g.top.y + 0.1 * w;
+      [-1, 1].forEach(function (sg) {
+        ctx.beginPath();
+        ctx.moveTo(sg * 0.46 * w, by + 0.02 * w); ctx.lineTo(sg * 0.40 * w, by - 0.40 * w); ctx.lineTo(sg * 0.10 * w, by - 0.02 * w);
+        ctx.closePath(); ctx.fillStyle = "#ff7ac6"; ctx.fill(); ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(sg * 0.38 * w, by - 0.04 * w); ctx.lineTo(sg * 0.375 * w, by - 0.27 * w); ctx.lineTo(sg * 0.2 * w, by - 0.05 * w);
+        ctx.closePath(); ctx.fillStyle = "#ffd6ee"; ctx.fill();
+      });
+      var n = g.nose;
+      ctx.beginPath();
+      ctx.moveTo(n.x - 0.045 * w, n.y - 0.02 * w); ctx.lineTo(n.x + 0.045 * w, n.y - 0.02 * w); ctx.lineTo(n.x, n.y + 0.035 * w);
+      ctx.closePath(); ctx.fillStyle = "#ff7ac6"; ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.lineWidth = Math.max(2, w * 0.014);
+      [-1, 1].forEach(function (sg) {
+        [-1, 0, 1].forEach(function (k) {
+          ctx.beginPath();
+          ctx.moveTo(n.x + sg * 0.14 * w, n.y + k * 0.035 * w);
+          ctx.lineTo(n.x + sg * 0.5 * w, n.y + k * 0.09 * w - 0.01 * w);
+          ctx.stroke();
+        });
+      });
+      ctx.restore();
+    },
+    bunny: function (ctx, g, w) {
+      [-1, 1].forEach(function (sg) {
+        var cx = sg * 0.2 * w, cy = g.top.y - 0.34 * w, rot = sg * 0.14;
+        ctx.beginPath(); ctx.ellipse(cx, cy, 0.1 * w, 0.4 * w, rot, 0, Math.PI * 2);
+        ctx.fillStyle = "#fff9fd"; ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(cx, cy + 0.03 * w, 0.05 * w, 0.29 * w, rot, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffb3de"; ctx.fill();
+      });
+      var n = g.nose;
+      ctx.beginPath(); ctx.ellipse(n.x, n.y, 0.04 * w, 0.03 * w, 0, 0, Math.PI * 2);
+      ctx.fillStyle = "#ff7ac6"; ctx.fill(); ctx.stroke();
+      var m = g.mouth, tw = 0.09 * w, th = 0.08 * w;
+      ctx.beginPath(); ctx.rect(m.x - tw / 2, m.y + 0.01 * w, tw, th);
+      ctx.fillStyle = "#fff"; ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(m.x, m.y + 0.01 * w); ctx.lineTo(m.x, m.y + 0.01 * w + th); ctx.stroke();
+    },
+    crown: function (ctx, g, w) {
+      var by = g.top.y + 0.05 * w, hw = 0.34 * w;
+      ctx.beginPath();
+      ctx.moveTo(-hw, by); ctx.lineTo(-hw, by - 0.22 * w); ctx.lineTo(-hw * 0.5, by - 0.11 * w);
+      ctx.lineTo(0, by - 0.3 * w); ctx.lineTo(hw * 0.5, by - 0.11 * w); ctx.lineTo(hw, by - 0.22 * w);
+      ctx.lineTo(hw, by); ctx.closePath();
+      ctx.fillStyle = "#ffd84d"; ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-hw, by - 0.05 * w); ctx.lineTo(hw, by - 0.05 * w); ctx.stroke();
+      [[-hw, by - 0.22 * w, "#6db8ff"], [0, by - 0.3 * w, "#ff7ac6"], [hw, by - 0.22 * w, "#9b6bff"]].forEach(function (gm) {
+        ctx.beginPath(); ctx.arc(gm[0], gm[1], 0.038 * w, 0, Math.PI * 2);
+        ctx.fillStyle = gm[2]; ctx.fill(); ctx.stroke();
+      });
+    },
+    glasses: function (ctx, g, w) {
+      var p = new Path2D(HEART), size = 0.36 * w, sc = size / 24;
+      [g.eL, g.eR].forEach(function (e) {
+        ctx.save();
+        ctx.translate(e.x, e.y + 0.01 * w); ctx.scale(sc, sc); ctx.translate(-12, -12.5);
+        ctx.fillStyle = "rgba(255,255,255,0.22)"; ctx.fill(p);
+        ctx.lineWidth = (0.065 * w) / sc; ctx.strokeStyle = INK; ctx.stroke(p);
+        ctx.lineWidth = (0.038 * w) / sc; ctx.strokeStyle = "#ff7ac6"; ctx.stroke(p);
+        ctx.restore();
+      });
+      ctx.beginPath(); ctx.moveTo(g.eL.x + 0.15 * w, g.eL.y - 0.02 * w); ctx.lineTo(g.eR.x - 0.15 * w, g.eR.y - 0.02 * w);
+      ctx.lineWidth = Math.max(2, w * 0.03); ctx.stroke();
+    },
+    blush: function (ctx, g, w) {
+      [g.cL, g.cR].forEach(function (c) {
+        var gr = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, 0.14 * w);
+        gr.addColorStop(0, "rgba(255,92,170,0.7)"); gr.addColorStop(1, "rgba(255,92,170,0)");
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.ellipse(c.x, c.y, 0.15 * w, 0.1 * w, 0, 0, Math.PI * 2); ctx.fill();
+      });
+      sticker(ctx, SPARK, -0.56 * w, g.top.y + 0.32 * w, 0.17 * w, 0, "#fff3a8");
+      sticker(ctx, SPARK, 0.6 * w, g.top.y + 0.18 * w, 0.13 * w, 0, "#a9d4ff");
+      sticker(ctx, STAR, 0.58 * w, g.cR.y + 0.12 * w, 0.12 * w, 12, "#ffb3de");
+      sticker(ctx, HEART, -0.58 * w, g.cL.y + 0.1 * w, 0.12 * w, -12, "#ff7ac6");
+    },
+    bow: function (ctx, g, w) {
+      ctx.save();
+      ctx.translate(0.3 * w, g.top.y + 0.04 * w); ctx.rotate(0.35);
+      [-1, 1].forEach(function (sg) {
+        ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(sg * 0.08 * w, -0.17 * w, sg * 0.26 * w, -0.15 * w, sg * 0.25 * w, 0);
+        ctx.bezierCurveTo(sg * 0.26 * w, 0.15 * w, sg * 0.08 * w, 0.17 * w, 0, 0);
+        ctx.closePath(); ctx.fillStyle = "#ff7ac6"; ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#fff";
+        [[0.11, -0.04], [0.17, 0.05], [0.2, -0.02]].forEach(function (d) {
+          ctx.beginPath(); ctx.arc(sg * d[0] * w, d[1] * w, 0.014 * w, 0, Math.PI * 2); ctx.fill();
+        });
+      });
+      ctx.beginPath(); ctx.arc(0, 0, 0.05 * w, 0, Math.PI * 2);
+      ctx.fillStyle = "#6db8ff"; ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  function drawFace(ctx, g, kind) {
+    if (!FX[kind]) return;
+    ctx.save();
+    ctx.translate(g.mid.x, g.mid.y); ctx.rotate(g.roll);
+    ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.strokeStyle = INK;
+    ctx.lineWidth = Math.max(2, g.w * 0.022);
+    FX[kind](ctx, g, g.w);
+    ctx.restore();
+  }
+
+  function fxFrame() {
+    rafId = requestAnimationFrame(fxFrame);
+    var W = fxCanvas.clientWidth, H = fxCanvas.clientHeight;
+    if (!W || !H) return;
+    var ready = faceFx !== "none" && landmarker && camReady && video.readyState >= 2 && video.videoWidth > 0;
+    if (!ready) {
+      if (fxDirty) { fxCtx.setTransform(1, 0, 0, 1, 0, 0); fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height); fxDirty = false; }
+      lastFace = null;
+      return;
+    }
+    if (detecting || video.currentTime === lastVT) return;
+    var now = performance.now();
+    if (now - lastDetect < 45) return;
+    lastVT = video.currentTime;
+    lastDetect = now;
+    var res;
+    try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+    lastFace = (res && res.faceLandmarks && res.faceLandmarks[0]) || null;
+    lastFaceAt = now;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var pw = Math.round(W * dpr), ph = Math.round(H * dpr);
+    if (fxCanvas.width !== pw || fxCanvas.height !== ph) { fxCanvas.width = pw; fxCanvas.height = ph; }
+    fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fxCtx.clearRect(0, 0, W, H);
+    fxDirty = true;
+    if (lastFace) {
+      fxCtx.save();
+      fxCtx.translate(W, 0); fxCtx.scale(-1, 1);
+      drawFace(fxCtx, faceGeom(lastFace, video.videoWidth, video.videoHeight, W, H), faceFx);
+      fxCtx.restore();
+    }
+  }
+  function startFxLoop() { if (!rafId) fxFrame(); }
+  function stopFxLoop() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    fxCtx.setTransform(1, 0, 0, 1, 0, 0); fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+    fxDirty = false; lastFace = null; lastVT = -1; lastDetect = 0;
+  }
+
+  async function detectImage(img) {
+    detecting = true;
+    try {
+      var ok = await loadLandmarker();
+      if (!ok) return null;
+      await landmarker.setOptions({ runningMode: "IMAGE" });
+      var r = landmarker.detect(img);
+      return (r && r.faceLandmarks && r.faceLandmarks[0]) || null;
+    } catch (e) { return null; }
+    finally {
+      if (landmarker) { try { await landmarker.setOptions({ runningMode: "VIDEO" }); } catch (e2) {} }
+      detecting = false;
+    }
+  }
+
+  $$(".pill[data-fx]").forEach(function (b) {
+    b.addEventListener("click", async function () {
+      var v = b.getAttribute("data-fx");
+      if (v !== "none" && !landmarker) {
+        setStatus("Lagi nyiapin filternya, bentar ya...");
+        var ok = await loadLandmarker();
+        if (!ok) { setStatus("Filternya gagal dimuat. Cek internet, terus coba lagi ya."); return; }
+        setStatus("Kita jepret 3x ya, siap-siap!");
+      }
+      faceFx = v;
+      $$(".pill[data-fx]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    });
+  });
+
+  /* ---------- ambil gambar 4:3 ---------- */
+  var CAP_W = 960, CAP_H = 720;
+  function toFrame(source, sw0, sh0, mirror, lm) {
+    if (!sw0 || !sh0 || !isFinite(sw0) || !isFinite(sh0)) return null;
+    var c = document.createElement("canvas");
+    c.width = CAP_W; c.height = CAP_H;
+    var ctx = c.getContext("2d");
+    var target = CAP_W / CAP_H, sw = sw0, sh = sh0;
+    if (sw0 / sh0 > target) { sw = sh0 * target; } else { sh = sw0 / target; }
+    var sx = (sw0 - sw) / 2, sy = (sh0 - sh) / 2;
+    try {
+      ctx.save();
+      if (mirror) { ctx.translate(CAP_W, 0); ctx.scale(-1, 1); }
+      if (canFilter && filterName !== "normal") { ctx.filter = FILTERS[filterName]; }
+      ctx.drawImage(source, sx, sy, sw, sh, 0, 0, CAP_W, CAP_H);
+      ctx.restore();
+    } catch (err) { return null; }
+    if (!canFilter && filterName !== "normal") {
+      ctx.save();
+      if (filterName === "bw") { ctx.globalCompositeOperation = "saturation"; ctx.fillStyle = "#808080"; }
+      else { ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = TINT[filterName]; }
+      ctx.fillRect(0, 0, CAP_W, CAP_H);
+      ctx.restore();
+    }
+    if (lm && faceFx !== "none") {
+      ctx.save();
+      if (mirror) { ctx.translate(CAP_W, 0); ctx.scale(-1, 1); }
+      drawFace(ctx, faceGeom(lm, sw0, sh0, CAP_W, CAP_H), faceFx);
+      ctx.restore();
+    }
+    return { canvas: c, url: c.toDataURL("image/jpeg", 0.7) };
+  }
+
+  /* ---------- slot ---------- */
+  var slotEls = $$(".slot");
+  function renderSlots() {
+    slotEls.forEach(function (el, i) {
+      var old = el.querySelector("img");
+      if (old) old.remove();
+      var has = !!photos[i];
+      el.classList.toggle("filled", has);
+      el.querySelector(".num").hidden = has;
+      if (has) {
+        var img = document.createElement("img");
+        img.alt = "Foto " + (i + 1);
+        img.src = photos[i].url;
+        el.appendChild(img);
+      }
+    });
+  }
+  function setActive(idx) { slotEls.forEach(function (el, i) { el.classList.toggle("active", i === idx); }); }
+
+  /* ---------- hitung mundur & sesi foto ---------- */
+  var countEl = $("#count"), flashEl = $("#flash");
+  function popText(text, cheese) {
+    countEl.className = "count";
+    void countEl.offsetWidth;
+    countEl.textContent = text;
+    countEl.className = "count pop" + (cheese ? " cheese" : "");
+  }
+  function clearCount() { countEl.textContent = ""; countEl.className = "count"; }
+  function doFlash() { flashEl.classList.remove("go"); void flashEl.offsetWidth; flashEl.classList.add("go"); }
+  function setBusy(b) {
+    busy = b;
+    startBtn.disabled = b || !camReady;
+    $("#uploadBtn").disabled = b;
+    $$(".pill").forEach(function (p) { p.disabled = b; });
+  }
+
+  async function runSession() {
+    if (busy || !camReady) return;
+    var mySession = ++sessionId;
+    setBusy(true);
+    photos = [null, null, null];
+    renderSlots();
+    try {
+      for (var i = 0; i < 3; i++) {
+        if (mySession !== sessionId) return;
+        setActive(i);
+        setStatus("Jepretan " + (i + 1) + " dari 3");
+        for (var n = delaySec; n >= 1; n--) {
+          if (mySession !== sessionId) return;
+          popText(String(n), false);
+          await sleep(1000);
+        }
+        if (mySession !== sessionId || !camReady) return;
+        popText("Ciyeee!", true);
+        await sleep(350);
+        if (mySession !== sessionId || !camReady) return;
+        clearCount();
+        doFlash();
+        var fresh = lastFace && (performance.now() - lastFaceAt) < 900 ? lastFace : null;
+        var shot = toFrame(video, video.videoWidth, video.videoHeight, true, fresh);
+        if (!shot) { setStatus("Kameranya belum siap, tunggu bentar ya."); return; }
+        photos[i] = shot;
+        renderSlots();
+        await sleep(900);
+      }
+      setActive(-1);
+      setStatus("Yeay, fotonya udah lengkap!");
+      await sleep(500);
+      goResult();
+    } catch (err) {
+      setStatus("Gagal jepret nih, coba lagi ya.");
+    } finally {
+      if (mySession === sessionId) setBusy(false);
+    }
+  }
+
+  /* ---------- foto dari galeri ---------- */
+  function loadImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { resolve({ img: img, url: url }); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("gagal")); };
+      img.src = url;
+    });
+  }
+  $("#fileInput").addEventListener("change", async function (e) {
+    var files = Array.prototype.slice.call(e.target.files || []).filter(function (f) { return /^image\//.test(f.type); });
+    e.target.value = "";
+    if (!files.length) return;
+    setBusy(true);
+    for (var f = 0; f < files.length; f++) {
+      var idx = photos.indexOf(null);
+      if (idx === -1) break;
+      try {
+        var loaded = await loadImage(files[f]);
+        try {
+          var lm = faceFx !== "none" ? await detectImage(loaded.img) : null;
+          var shot = toFrame(loaded.img, loaded.img.naturalWidth, loaded.img.naturalHeight, false, lm);
+          if (!shot) throw new Error("frame");
+          photos[idx] = shot;
+        } finally {
+          URL.revokeObjectURL(loaded.url);
+        }
+      } catch (err) { setStatus("Satu foto gagal dibuka, coba file lain ya."); }
+    }
+    setBusy(false);
+    renderSlots();
+    var left = photos.filter(function (p) { return !p; }).length;
+    if (left === 0) { setStatus("Fotonya udah lengkap!"); await sleep(400); goResult(); }
+    else { setStatus("Kurang " + left + " foto lagi nih, gas!"); }
+  });
+  $("#uploadBtn").addEventListener("click", function () { $("#fileInput").click(); });
+
+  /* ---------- navigasi ---------- */
+  async function goBooth() {
+    stopTyping();
+    show("booth", true);
+    photos = [null, null, null];
+    renderSlots(); setActive(-1);
+    clearCount();
+    setStatus("Kita jepret 3x ya, siap-siap!");
+    await startCamera();
+  }
+  function goResult() {
+    stopCamera();
+    show("result", true);
+    renderStrip();
+  }
+  $("#goBooth").addEventListener("click", goBooth);
+  $("#backWelcome").addEventListener("click", function () { stopCamera(); show("welcome", true); typeLoop(); });
+  $("#againBtn").addEventListener("click", goBooth);
+
+  $$(".pill[data-delay]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      delaySec = parseInt(b.getAttribute("data-delay"), 10);
+      $$(".pill[data-delay]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    });
+  });
+  $$(".pill[data-filter]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      filterName = b.getAttribute("data-filter");
+      video.style.filter = FILTERS[filterName];
+      $$(".pill[data-filter]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    });
+  });
+  startBtn.addEventListener("click", runSession);
+
+  /* ---------- bingkai photostrip ---------- */
+  var FRAMES = {
+    manis:   { bg: "dots",    seed: 11, tape: "#ffb3de", ribbon: "#ffd6ee", corner: "heart",  cornerA: "#ff7ac6", c: ["#ffd6ee", "#ff9ad2"], st: ["#6db8ff", "#9b6bff", "#fff3a8"], text: INK, stroke: "#fff", tag: "gemes maksimal!" },
+    langit:  { bg: "clouds",  seed: 23, tape: "#cbe6ff", corner: "star",   cornerA: "#ffd166", c: ["#d9efff", "#7fb8ff"], st: ["#ffffff", "#ff7ac6", "#fff3a8"], text: INK, stroke: "#fff", tag: "cerah ceria hari ini!" },
+    galaksi: { bg: "galaxy",  seed: 37, tape: "#ffb3de", corner: "spark",  cornerA: "#fff3a8", c: ["#3d2470", "#6b46c9", "#4a7bd8"], st: ["#fff3a8", "#ffb3de", "#a9d4ff"], text: "#ffffff", stroke: INK, tag: "kamu bintangnya!" },
+    pelangi: { bg: "stripes", seed: 41, tape: "#ffffff", ribbon: "#e6d6ff", corner: "flower", cornerA: "#ff9ad2", c: ["#ffd6ee", "#e6d6ff", "#d4ecff"], st: ["#ff7ac6", "#9b6bff", "#6db8ff"], text: INK, stroke: "#fff", tag: "warna warni ceria!" },
+    gingham: { bg: "gingham", seed: 53, tape: "#ffb3de", ribbon: "#ffe0f1", corner: "flower", cornerA: "#ff7ac6", c: ["#fff0f8", "#ffe0f1"], st: ["#ff7ac6", "#6db8ff", "#fff3a8"], text: INK, stroke: "#fff", tag: "manis banget sih!" },
+    film:    { bg: "film",    seed: 67, tape: "#ffd166", corner: "star",   cornerA: "#ff9ad2", c: ["#3d2470", "#3d2470"], st: ["#ff9ad2", "#8ec5ff", "#fff3a8"], text: "#ffd6ee", stroke: INK, tag: "jepret terus!", titleFill: "#ff9ad2" }
+  };
+  var stripCanvas = null;
+  var STRIP_SCALE = 1.5;
+
+  function rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function seeded(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+  function cloudBlob(ctx, x, y, s) {
+    ctx.beginPath();
+    ctx.arc(x - s * 0.45, y + s * 0.1, s * 0.3, 0, Math.PI * 2);
+    ctx.arc(x, y - s * 0.1, s * 0.42, 0, Math.PI * 2);
+    ctx.arc(x + s * 0.5, y + s * 0.12, s * 0.3, 0, Math.PI * 2);
+    ctx.rect(x - s * 0.45, y + s * 0.1, s * 0.95, s * 0.32);
+    ctx.fill();
+  }
+
+  /* ---------- ornamen pesta ---------- */
+  function sprinkle(ctx, rnd, W, H, n, colors, rMin, rMax) {
+    for (var i = 0; i < n; i++) {
+      ctx.globalAlpha = 0.5 + rnd() * 0.5;
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.beginPath();
+      ctx.arc(rnd() * W, rnd() * H, rMin + rnd() * (rMax - rMin), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function confettiBurst(ctx, rnd, x, y, radius, count, colors) {
+    for (var i = 0; i < count; i++) {
+      var a = rnd() * Math.PI * 2, d = radius * (0.3 + rnd() * 0.7);
+      var col = colors[Math.floor(rnd() * colors.length)];
+      var kind = rnd();
+      ctx.save();
+      ctx.translate(x + Math.cos(a) * d, y + Math.sin(a) * d);
+      ctx.rotate(rnd() * Math.PI * 2);
+      if (kind < 0.45) {
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, 2.5 + rnd() * 2.5, 0, Math.PI * 2); ctx.fill();
+      } else if (kind < 0.75) {
+        ctx.fillStyle = col; ctx.fillRect(-3, -1.6, 6 + rnd() * 5, 3.2);
+      } else {
+        sticker(ctx, rnd() < 0.5 ? SHAPES.star : SHAPES.heart, 0, 0, 11 + rnd() * 8, 0, col);
+      }
+      ctx.restore();
+    }
+  }
+
+  function bunting(ctx, y, colors, flags) {
+    var W = 600, sag = 20;
+    ctx.save();
+    ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(4, y); ctx.quadraticCurveTo(W / 2, y + sag * 2, W - 4, y); ctx.stroke();
+    for (var i = 0; i < flags; i++) {
+      var t = (i + 0.5) / flags, x = 4 + t * (W - 8);
+      var top = y + Math.sin(t * Math.PI) * sag * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(x - 14, top); ctx.lineTo(x + 14, top); ctx.lineTo(x, top + 30); ctx.closePath();
+      ctx.fillStyle = colors[i % colors.length]; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = INK; ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function tape(ctx, cx, cy, w, h, rot, color) {
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(rot);
+    ctx.fillStyle = color; ctx.globalAlpha = 0.92;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.globalAlpha = 0.45; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4;
+    for (var i = -w / 2 + 7; i < w / 2 - 2; i += 9) {
+      ctx.beginPath(); ctx.moveTo(i, -h / 2 + 1); ctx.lineTo(i, h / 2 - 1); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function flower(ctx, cx, cy, r, petal, middle) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.lineWidth = 2.5; ctx.strokeStyle = "#fff"; ctx.fillStyle = petal;
+    for (var i = 0; i < 5; i++) {
+      var a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6, r * 0.48, r * 0.34, a, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2);
+    ctx.fillStyle = middle; ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  function sparkleStar(ctx, cx, cy, r, color) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    for (var i = 0; i < 8; i++) {
+      var a = -Math.PI / 2 + i * Math.PI / 4, rr = i % 2 ? r * 0.36 : r;
+      if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = "#fff"; ctx.stroke();
+    ctx.restore();
+  }
+
+  function rainbowArc(ctx, cx, cy, r, band) {
+    var cols = ["#ff9ad2", "#ffd166", "#a9e34b", "#6db8ff", "#9b6bff"];
+    for (var i = 0; i < cols.length; i++) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - i * band, Math.PI, Math.PI * 2);
+      ctx.lineWidth = band + 1.5; ctx.strokeStyle = cols[i]; ctx.stroke();
+    }
+  }
+
+  function sunBurst(ctx, cx, cy, r, rays, color) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.fillStyle = color; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5;
+    for (var i = 0; i < rays; i++) {
+      ctx.save(); ctx.rotate((i / rays) * Math.PI * 2);
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.15, -r * 0.9); ctx.lineTo(0, -r * 1.6); ctx.lineTo(r * 0.15, -r * 0.9);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  function planet(ctx, cx, cy, r, color, ring) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.save();
+    ctx.rotate(-0.32);
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.7, r * 0.52, 0, 0, Math.PI * 2);
+    ctx.lineWidth = 4; ctx.strokeStyle = ring; ctx.stroke();
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = "#fff"; ctx.stroke();
+    ctx.restore();
+  }
+
+  function shootingStar(ctx, x, y, len, tilt) {
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(tilt);
+    var g = ctx.createLinearGradient(0, 0, len, 0);
+    g.addColorStop(0, "rgba(255,255,255,0)");
+    g.addColorStop(1, "rgba(255,255,255,0.95)");
+    ctx.strokeStyle = g; ctx.lineWidth = 3; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len, 0); ctx.stroke();
+    ctx.restore();
+    sparkleStar(ctx, x + Math.cos(tilt) * len, y + Math.sin(tilt) * len, 9, "#fff3a8");
+  }
+
+  function bird(ctx, x, y, s, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(2, s * 0.18); ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-s, 0); ctx.quadraticCurveTo(-s / 2, -s * 0.75, 0, 0);
+    ctx.quadraticCurveTo(s / 2, -s * 0.75, s, 0);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function ribbon(ctx, cx, y, w, h, fill) {
+    var x = cx - w / 2, tail = 20;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x - tail, y + h / 2);
+    ctx.lineTo(x, y); ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w + tail, y + h / 2);
+    ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h);
+    ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.lineWidth = 3.5; ctx.lineJoin = "round"; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.restore();
+  }
+
+  function reel(ctx, x, y, r, base, hole) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = base; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = "#fff"; ctx.stroke();
+    for (var i = 0; i < 4; i++) {
+      var a = i * Math.PI / 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * r * 0.44, Math.sin(a) * r * 0.44, r * 0.24, 0, Math.PI * 2);
+      ctx.fillStyle = hole; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.16, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill();
+    ctx.restore();
+  }
+
+  /* ornamen per bingkai: ditaruh di area bebas (judul, celah antar foto, footer) */
+  function paintDecor(ctx, W, H, fr) {
+    var rnd = seeded(fr.seed);
+    var top = 126, ph = 396, gap = 34;
+    var fy = top + 3 * ph + 2 * gap;
+    var g1 = top + ph + gap / 2, g2 = top + 2 * ph + gap * 1.5;
+    var L = 13, R = W - 13;
+
+    sprinkle(ctx, rnd, W, H, 120, fr.st, 1.2, 3.4);
+
+    if (fr.bg === "dots") {
+      bunting(ctx, fy - 100, ["#ff9ad2", "#ffd166", "#8ecbff", "#c9a7ff", "#ffb3de"], 11);
+      confettiBurst(ctx, rnd, 48, 60, 36, 16, fr.st);
+      confettiBurst(ctx, rnd, W - 48, 60, 36, 16, fr.st);
+      confettiBurst(ctx, rnd, 92, fy - 6, 46, 14, fr.st);
+      confettiBurst(ctx, rnd, W - 92, fy + 4, 46, 14, fr.st);
+      flower(ctx, 46, fy + 30, 17, "#ffb3de", "#fff3a8");
+      flower(ctx, W - 46, fy + 22, 14, "#c9a7ff", "#fff3a8");
+      sticker(ctx, SHAPES.heart, L, g1, 26, -12, "#ff7ac6");
+      sticker(ctx, SHAPES.star, R, g2, 24, 14, "#9b6bff");
+    } else if (fr.bg === "clouds") {
+      sunBurst(ctx, W - 52, 58, 22, 11, "#ffe066");
+      bird(ctx, 44, 66, 13, INK);
+      bird(ctx, 68, 46, 9, INK);
+      bird(ctx, W - 104, fy - 46, 12, INK);
+      bird(ctx, W - 132, fy - 26, 9, INK);
+      sticker(ctx, SHAPES.heart, L, g1, 26, -10, "#ff7ac6");
+      sticker(ctx, SHAPES.spark, R, g2, 24, 0, "#fff3a8");
+      sticker(ctx, SHAPES.star, R, g1, 22, 12, "#9b6bff");
+      sparkleStar(ctx, 52, fy + 10, 15, "#ffffff");
+      sparkleStar(ctx, W - 50, fy + 30, 12, "#ffe066");
+      confettiBurst(ctx, rnd, W / 2, fy - 4, 90, 10, ["#ffffff", "#ffd166"]);
+    } else if (fr.bg === "galaxy") {
+      var ng = ctx.createRadialGradient(W / 2, 58, 8, W / 2, 58, 250);
+      ng.addColorStop(0, "rgba(255,179,222,0.42)");
+      ng.addColorStop(1, "rgba(255,179,222,0)");
+      ctx.fillStyle = ng; ctx.fillRect(0, 0, W, 300);
+      shootingStar(ctx, W - 156, 42, 96, -0.42);
+      shootingStar(ctx, W - 120, fy - 30, 86, -0.5);
+      planet(ctx, 56, fy + 16, 21, "#ff9ad2", "#fff3a8");
+      sparkleStar(ctx, L, g1, 16, "#fff3a8");
+      sparkleStar(ctx, R, g2, 18, "#ffb3de");
+      sticker(ctx, SHAPES.star, R, g1, 22, 12, "#a9d4ff");
+      sticker(ctx, SHAPES.spark, L, g2, 20, 0, "#fff3a8");
+      confettiBurst(ctx, rnd, W / 2, fy - 6, 110, 12, ["#fff3a8", "#ffb3de"]);
+    } else if (fr.bg === "stripes") {
+      rainbowArc(ctx, W / 2, fy + 28, 112, 9);
+      confettiBurst(ctx, rnd, 46, 62, 38, 18, fr.st);
+      confettiBurst(ctx, rnd, W - 46, 62, 38, 18, fr.st);
+      confettiBurst(ctx, rnd, 76, fy - 10, 40, 12, fr.st);
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      cloudBlob(ctx, 52, fy + 34, 34);
+      sticker(ctx, SHAPES.spark, L, g1, 24, 0, "#fff3a8");
+      sticker(ctx, SHAPES.heart, R, g2, 24, 12, "#ff7ac6");
+      sparkleStar(ctx, R, g1, 16, "#ffffff");
+    } else if (fr.bg === "gingham") {
+      bunting(ctx, fy - 104, ["#ff7ac6", "#6db8ff", "#ffd166", "#9b6bff", "#ffb3de"], 11);
+      flower(ctx, 44, 62, 16, "#ff7ac6", "#fff3a8");
+      flower(ctx, W - 44, 58, 13, "#9b6bff", "#fff3a8");
+      flower(ctx, 46, fy + 26, 18, "#ff7ac6", "#fff3a8");
+      flower(ctx, W - 52, fy + 14, 15, "#6db8ff", "#fff3a8");
+      sticker(ctx, SHAPES.heart, L, g1, 24, -12, "#ff7ac6");
+      sticker(ctx, SHAPES.heart, R, g2, 26, 12, "#ff9ad2");
+      sticker(ctx, SHAPES.star, R, g1, 20, 8, "#6db8ff");
+      confettiBurst(ctx, rnd, 90, fy - 12, 40, 10, ["#ffd166", "#ff9ad2"]);
+    } else if (fr.bg === "film") {
+      var leak = ctx.createLinearGradient(0, fy - 60, W, fy + 160);
+      leak.addColorStop(0, "rgba(255,154,210,0.55)");
+      leak.addColorStop(0.5, "rgba(255,243,168,0.28)");
+      leak.addColorStop(1, "rgba(142,197,255,0.35)");
+      ctx.fillStyle = leak;
+      ctx.fillRect(0, fy - 70, W, 240);
+      reel(ctx, 54, fy + 18, 26, "#ff9ad2", "#3d2470");
+      reel(ctx, W - 54, fy + 24, 22, "#8ec5ff", "#3d2470");
+      sparkleStar(ctx, L, g1, 18, "#ffd166");
+      sparkleStar(ctx, R, g2, 16, "#ffd166");
+      sticker(ctx, SHAPES.star, R, g1, 24, 10, "#fff3a8");
+      sticker(ctx, SHAPES.heart, L, g2, 22, -10, "#ffb3de");
+      confettiBurst(ctx, rnd, W / 2, 58, 130, 16, ["#ff9ad2", "#8ec5ff", "#fff3a8"]);
+    }
+  }
+
+  function paintBg(ctx, W, H, fr) {
+    var g = ctx.createLinearGradient(0, 0, W * 0.4, H);
+    fr.c.forEach(function (col, i) { g.addColorStop(fr.c.length === 1 ? 0 : i / (fr.c.length - 1), col); });
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    var i, x, y;
+    if (fr.bg === "dots") {
+      ctx.fillStyle = "rgba(255,255,255,0.32)";
+      for (y = 20; y < H; y += 44) {
+        for (x = ((y / 44) % 2 ? 20 : 42); x < W; x += 44) { ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill(); }
+      }
+    } else if (fr.bg === "clouds") {
+      var r1 = seeded(7);
+      ctx.fillStyle = "rgba(255,255,255,0.78)";
+      for (i = 0; i < 16; i++) { cloudBlob(ctx, r1() * W, 30 + r1() * (H - 60), 44 + r1() * 46); }
+    } else if (fr.bg === "galaxy") {
+      var r2 = seeded(21);
+      for (i = 0; i < 170; i++) {
+        ctx.fillStyle = "rgba(255,255,255," + (0.3 + r2() * 0.7).toFixed(2) + ")";
+        ctx.beginPath(); ctx.arc(r2() * W, r2() * H, 0.8 + r2() * 2.4, 0, Math.PI * 2); ctx.fill();
+      }
+      for (i = 0; i < 12; i++) { sticker(ctx, SPARK, r2() * W, r2() * H, 12 + r2() * 14, 0, ["#fff3a8", "#ffb3de", "#a9d4ff"][i % 3]); }
+    } else if (fr.bg === "stripes") {
+      var cols = ["#ffd6ee", "#fff9fd", "#d4ecff", "#fff9fd", "#e6d6ff", "#fff9fd"], sw = 46, diag = Math.hypot(W, H), n = Math.ceil(diag / sw);
+      ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.5);
+      for (i = -n; i <= n; i++) { ctx.fillStyle = cols[((i % cols.length) + cols.length) % cols.length]; ctx.fillRect(i * sw, -diag, sw, diag * 2); }
+      ctx.restore();
+    } else if (fr.bg === "gingham") {
+      var cell = 38;
+      ctx.fillStyle = "rgba(255,122,198,0.3)";
+      for (x = 0; x < W; x += cell * 2) { ctx.fillRect(x, 0, cell, H); }
+      for (y = 0; y < H; y += cell * 2) { ctx.fillRect(0, y, W, cell); }
+    } else if (fr.bg === "film") {
+      ctx.fillStyle = "rgba(255,249,253,0.92)";
+      for (y = 14; y < H - 10; y += 46) {
+        rr(ctx, 7, y, 14, 24, 5); ctx.fill();
+        rr(ctx, W - 21, y, 14, 24, 5); ctx.fill();
+      }
+    }
+  }
+
+  async function renderStrip() {
+    var dlBtn = $("#downloadBtn");
+    dlBtn.disabled = true;
+    try {
+      try { await document.fonts.load("700 56px Fredoka"); await document.fonts.load("600 34px Fredoka"); await document.fonts.load("700 24px Nunito"); } catch (e) {}
+      var fr = FRAMES[frameName];
+      var W = 600, pad = 36, pw = 528, ph = 396, gap = 34, top = 126, foot = 160;
+      var H = top + 3 * ph + 2 * gap + foot;
+      var c = document.createElement("canvas");
+      c.width = Math.round(W * STRIP_SCALE);
+      c.height = Math.round(H * STRIP_SCALE);
+      var ctx = c.getContext("2d");
+      ctx.scale(STRIP_SCALE, STRIP_SCALE);
+
+      paintBg(ctx, W, H, fr);
+      paintDecor(ctx, W, H, fr);
+
+      ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+      if (fr.ribbon) {
+        ribbon(ctx, W / 2, 20, 300, 62, fr.ribbon);
+        ctx.font = "700 44px Fredoka, 'Trebuchet MS', sans-serif";
+        ctx.fillStyle = INK;
+        ctx.fillText("photobox", W / 2, 62);
+      } else {
+        ctx.font = "700 60px Fredoka, 'Trebuchet MS', sans-serif";
+        ctx.lineJoin = "round"; ctx.lineWidth = 9; ctx.strokeStyle = fr.stroke;
+        ctx.strokeText("photobox", W / 2, 84);
+        ctx.fillStyle = fr.titleFill || fr.text; ctx.fillText("photobox", W / 2, 84);
+      }
+
+      var tilts = [-1.4, 1.1, -0.9];
+      for (var i = 0; i < 3; i++) {
+        var x = pad, y = top + i * (ph + gap);
+        ctx.save();
+        ctx.translate(W / 2, y + ph / 2);
+        ctx.rotate(tilts[i] * Math.PI / 180);
+        ctx.translate(-W / 2, -(y + ph / 2));
+
+        ctx.save();
+        ctx.shadowColor = "rgba(61,36,112,0.35)"; ctx.shadowOffsetY = 8; ctx.shadowBlur = 0;
+        rr(ctx, x - 10, y - 10, pw + 20, ph + 20, 26);
+        ctx.fillStyle = "#fff"; ctx.fill();
+        ctx.restore();
+        rr(ctx, x - 10, y - 10, pw + 20, ph + 20, 26);
+        ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.stroke();
+        ctx.save();
+        rr(ctx, x, y, pw, ph, 18); ctx.clip();
+        if (photos[i]) ctx.drawImage(photos[i].canvas, x, y, pw, ph);
+        ctx.restore();
+
+        tape(ctx, x - 10, y - 10, 66, 24, -Math.PI / 4, fr.tape);
+        tape(ctx, x + pw + 10, y + ph + 10, 66, 24, -Math.PI / 4, fr.tape);
+
+        var mx = i % 2 ? x - 4 : x + pw + 4;
+        var my = i % 2 ? y + ph - 4 : y + 4;
+        if (fr.corner === "flower") flower(ctx, mx, my, 18, fr.cornerA, "#fff3a8");
+        else sticker(ctx, SHAPES[fr.corner], mx, my, 32, 12, fr.cornerA);
+
+        ctx.restore();
+      }
+
+      var fy = top + 3 * ph + 2 * gap;
+      ctx.font = "600 38px Fredoka, 'Trebuchet MS', sans-serif";
+      ctx.lineWidth = 8; ctx.strokeStyle = fr.stroke;
+      ctx.strokeText(fr.tag, W / 2, fy + 66);
+      ctx.fillStyle = fr.text; ctx.fillText(fr.tag, W / 2, fy + 66);
+      var dateText = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+      ctx.font = "700 24px Nunito, system-ui, sans-serif";
+      ctx.lineWidth = 6; ctx.strokeStyle = fr.stroke;
+      ctx.strokeText(dateText, W / 2, fy + 108);
+      ctx.fillStyle = fr.text; ctx.fillText(dateText, W / 2, fy + 108);
+
+      stripCanvas = c;
+      $("#stripImg").src = c.toDataURL("image/png");
+      dlBtn.disabled = false;
+    } catch (err) {
+      stripCanvas = null;
+      dlBtn.disabled = true;
+      setStatus("Bingkainya gagal dibikin, pilih yang lain ya.");
+    }
+  }
+
+  $$(".frame-opt").forEach(function (b) {
+    b.addEventListener("click", function () {
+      frameName = b.getAttribute("data-frame");
+      $$(".frame-opt").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      renderStrip();
+    });
+  });
+
+  /* ---------- unduh ---------- */
+  $("#downloadBtn").addEventListener("click", function () {
+    if (!stripCanvas) { setStatus("Bingkainya belum jadi, tunggu bentar ya."); return; }
+    stripCanvas.toBlob(function (blob) {
+      if (!blob) { setStatus("Gagal nyimpen nih, coba lagi ya."); return; }
+      var a = document.createElement("a");
+      var d = new Date();
+      var stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0") + "-" + String(d.getHours()).padStart(2, "0") + String(d.getMinutes()).padStart(2, "0");
+      a.href = URL.createObjectURL(blob);
+      a.download = "photobox-" + stamp + ".png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+    }, "image/png");
+  });
+
+  window.addEventListener("pagehide", stopCamera);
+})();
+</script>
+</body>
+</html>
